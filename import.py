@@ -33,12 +33,9 @@ def import_csv(files):
             table_name = file.rsplit(".", 1)[0]  # Strip file extension from file
 
             create_table = "CREATE TABLE {}" \
-                           "(PROBE_ID character varying(255)," \
-                           "SAMPLE_DATE timestamp without time zone," \
-                           "LAT float,LON float," \
-                           "HEADING float,SPEED float," \
-                           "PROBE_DATA_PROVIDER character varying(255)," \
-                           "SYSTEM_DATE timestamp without time zone);".format(table_name)
+                           "(lon1 float,lat1 float," \
+                           "lon2 float,lat2 float," \
+                           "line_geom geometry);".format(table_name)
 
             print("STATUS: Creating new table", table_name)
             db.execute(create_table)
