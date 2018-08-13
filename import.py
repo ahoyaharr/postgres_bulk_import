@@ -2,10 +2,24 @@ import os
 import sys
 import configparser
 import psycopg2
+import csv
+from functools import reduce
 
 WINDOWS_ENCODING = '\\'
 UNIX_ENCODING = '/'
 
+def get_header(filepath):
+    with open(filepath) as csv_file:
+        return csv.DictReader(csv_file).fieldnames
+
+def guess_type(header):
+  if 'lon' in header or 'lat' in header:
+    return 'float'
+  if 'geom' in header:
+    return 'geometry'
+  if 'id' in header:
+    return 'int'
+  return 'string'
 
 def separator():
     return WINDOWS_ENCODING if SYSTEM_TYPE == 'WINDOWS' else UNIX_ENCODING
@@ -29,19 +43,20 @@ def import_csv(files):
     db = db_connection.cursor()
 
     for file in files:
+        filepath = PATH + separator() + file
         if CREATE_NEW_TABLE:
             table_name = file.rsplit(".", 1)[0]  # Strip file extension from file
 
-            create_table = "CREATE TABLE {}" \
-                           "(lon1 float,lat1 float," \
-                           "lon2 float,lat2 float," \
-                           "line_geom geometry);".format(table_name)
+            create_table = reduce(lambda query, column_name: query + column_name + " " + guess_type(column_name) + ", ",
+                                        get_header(filepath),
+                                        "CREATE TABLE {} (".format(table_name))[:-2] + ");"
 
+            print(create_table)
             print("STATUS: Creating new table", table_name)
             db.execute(create_table)
             print("STATUS: Finished creating new table", table_name)
 
-        import_file = "COPY {} FROM '{}' DELIMITER ',' CSV HEADER;".format(table_name, PATH + separator() + file)
+        import_file = "COPY {} FROM '{}' DELIMITER ',' CSV HEADER;".format(table_name, filepath)
         print("STATUS: Beginning import of file", file)
         db.execute(import_file)
         print("STATUS: Finished import of file", file)
